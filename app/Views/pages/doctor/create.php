@@ -1,73 +1,102 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold">فحص الطبيب والملف الطبي</h2>
-    <a href="/visits" class="btn btn-outline-secondary px-4">عودة للسجل</a>
-</div>
+<section class="page-header">
+    <div>
+        <span class="header-chip"><i class="fas fa-user-doctor"></i>الفحص الطبي</span>
+        <h1 class="page-title mt-3">فحص الطبيب والملف الطبي</h1>
+        <p class="page-subtitle">مراجعة بيانات المريض ونتائج الفرز ثم توثيق التشخيص وخطة العلاج والقرار النهائي.</p>
+    </div>
+    <div class="page-actions">
+        <a href="/visits" class="btn btn-outline-secondary"><i class="fas fa-arrow-right ms-2"></i>عودة للسجل</a>
+    </div>
+</section>
 
-<div class="row">
-    <!-- Patient Info and Triage Summary -->
-    <div class="col-md-4">
-        <div class="card shadow-sm border-0 rounded-4 mb-4">
-            <div class="card-body bg-light rounded-4">
-                <h5 class="fw-bold text-primary mb-3">بيانات المريض</h5>
-                <p class="mb-1"><strong>الاسم:</strong> <?php echo htmlspecialchars($visit['full_name']); ?></p>
-                <p class="mb-1"><strong>الرقم القومي:</strong> <?php echo htmlspecialchars($visit['national_id']); ?></p>
-                <p class="mb-1"><strong>العمر:</strong> <?php echo date_diff(date_create($visit['dob']), date_create('today'))->y; ?> سنة</p>
+<section class="overview-grid">
+    <article class="content-card span-4">
+        <div class="content-card-header">
+            <div>
+                <h3 class="section-title mb-1">ملخص الحالة</h3>
+                <p class="section-subtitle">عرض سريع للبيانات الأساسية قبل اتخاذ القرار الطبي.</p>
+            </div>
+        </div>
+
+        <div class="d-flex flex-column gap-3 mb-4">
+            <div class="summary-item">
+                <div class="data-label mb-1">الاسم</div>
+                <div class="data-value"><?php echo htmlspecialchars($visit['full_name']); ?></div>
+            </div>
+            <div class="summary-item">
+                <div class="data-label mb-1">الرقم القومي</div>
+                <div class="data-value"><?php echo htmlspecialchars($visit['national_id']); ?></div>
+            </div>
+            <div class="summary-item">
+                <div class="data-label mb-1">العمر</div>
+                <div class="data-value"><?php echo date_diff(date_create($visit['dob']), date_create('today'))->y; ?> سنة</div>
             </div>
         </div>
 
         <?php if (!empty($triage)): ?>
-        <div class="card shadow-sm border-0 rounded-4 mb-4 border-start border-warning border-4">
-            <div class="card-body">
-                <h5 class="fw-bold text-dark mb-3">تقييم الفرز (Triage)</h5>
-                <p class="mb-1"><strong>ضغط الدم:</strong> <span class="text-danger fw-bold"><?php echo htmlspecialchars($triage['blood_pressure']); ?></span></p>
-                <p class="mb-1"><strong>نبض القلب:</strong> <?php echo htmlspecialchars($triage['heart_rate']); ?> bpm</p>
-                <p class="mb-1"><strong>الحرارة:</strong> <?php echo htmlspecialchars($triage['temperature']); ?> °C</p>
-                <hr>
-                <p class="mb-0 text-muted"><strong>ملاحظات التمريض:</strong><br><?php echo nl2br(htmlspecialchars($triage['notes'])); ?></p>
+            <div class="surface-card p-3">
+                <h4 class="section-title mb-3">نتائج الفرز</h4>
+                <div class="d-flex flex-column gap-3">
+                    <div class="summary-item">
+                        <div class="data-label mb-1">ضغط الدم</div>
+                        <div class="data-value"><?php echo htmlspecialchars($triage['blood_pressure']); ?></div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="data-label mb-1">نبض القلب</div>
+                        <div class="data-value"><?php echo htmlspecialchars($triage['heart_rate']); ?> bpm</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="data-label mb-1">درجة الحرارة</div>
+                        <div class="data-value"><?php echo htmlspecialchars($triage['temperature']); ?> °C</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="data-label mb-1">ملاحظات التمريض</div>
+                        <div class="empty-copy mb-0"><?php echo nl2br(htmlspecialchars($triage['notes'])); ?></div>
+                    </div>
+                </div>
             </div>
-        </div>
         <?php else: ?>
-        <div class="alert alert-warning border-0 rounded-4">لا توجد بيانات فرز مسجلة لهذا المريض.</div>
+            <div class="alert alert-warning mb-0">لا توجد بيانات فرز مسجلة لهذه الزيارة.</div>
         <?php endif; ?>
-    </div>
-    
-    <!-- Medical Examination Form -->
-    <div class="col-md-8">
-        <div class="card shadow-sm border-0 rounded-4">
-            <div class="card-body p-4">
-                <form action="/doctor/create" method="post">
-                    <input type="hidden" name="visit_id" value="<?php echo $visit['id']; ?>">
-                    
-                    <h5 class="fw-bold text-dark mb-4 border-bottom pb-2">التشخيص والعلاج</h5>
-                    
-                    <div class="mb-4">
-                        <label class="form-label fw-bold text-muted">التشخيص الطبي (Diagnosis) <span class="text-danger">*</span></label>
-                        <textarea name="diagnosis" class="form-control form-control-lg bg-light" rows="3" required placeholder="اكتب التشخيص هنا..."></textarea>
-                    </div>
+    </article>
 
-                    <div class="mb-4">
-                        <label class="form-label fw-bold text-muted">خطة العلاج (Treatment Plan)</label>
-                        <textarea name="treatment_plan" class="form-control form-control-lg bg-light" rows="3" placeholder="الإجراءات المتخذة في الطوارئ..."></textarea>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label fw-bold text-muted">الوصفة الطبية (Prescriptions)</label>
-                        <textarea name="prescriptions" class="form-control form-control-lg bg-light" rows="3" placeholder="الأدوية الموصوفة..."></textarea>
-                    </div>
-
-                    <div class="mb-4 p-3 bg-light rounded-3">
-                        <label class="form-label fw-bold text-dark">القرار الطبي النهائي (تحديث حالة المريض)</label>
-                        <select name="next_status" class="form-select form-select-lg border-primary">
-                            <option value="discharged" selected>خروج (Discharged)</option>
-                            <option value="admitted">تنويم / دخول المستشفى (Admitted)</option>
-                        </select>
-                    </div>
-
-                    <div class="d-flex justify-content-end pt-3">
-                        <button type="submit" class="btn btn-primary btn-lg fw-bold px-5">حفظ وإنهاء الزيارة</button>
-                    </div>
-                </form>
+    <article class="form-panel span-8">
+        <div class="content-card-header">
+            <div>
+                <h3 class="section-title mb-1">التشخيص والعلاج</h3>
+                <p class="section-subtitle">اكتب التقييم الطبي بشكل منظّم ثم حدّث النتيجة النهائية للزيارة.</p>
             </div>
+            <span class="badge-soft badge-soft-primary"><i class="fas fa-file-waveform"></i>قرار طبي موثق</span>
         </div>
-    </div>
-</div>
+
+        <form action="/doctor/create" method="post">
+            <input type="hidden" name="visit_id" value="<?php echo $visit['id']; ?>">
+            <div class="row g-4">
+                <div class="col-12">
+                    <label class="form-label">التشخيص الطبي (Diagnosis) <span class="text-danger">*</span></label>
+                    <textarea name="diagnosis" class="form-control form-control-lg" rows="4" required placeholder="اكتب التشخيص هنا..."></textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">خطة العلاج (Treatment Plan)</label>
+                    <textarea name="treatment_plan" class="form-control form-control-lg" rows="4" placeholder="الإجراءات المتخذة في الطوارئ..."></textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">الوصفة الطبية (Prescriptions)</label>
+                    <textarea name="prescriptions" class="form-control form-control-lg" rows="4" placeholder="الأدوية الموصوفة..."></textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">القرار الطبي النهائي</label>
+                    <select name="next_status" class="form-select form-select-lg">
+                        <option value="discharged" selected>خروج (Discharged)</option>
+                        <option value="admitted">تنويم / دخول المستشفى (Admitted)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-actions mt-4">
+                <p class="empty-copy mb-0">عند الحفظ سيتم إغلاق المسار الحالي وتحديث حالة الزيارة فوراً.</p>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-floppy-disk ms-2"></i>حفظ وإنهاء الزيارة</button>
+            </div>
+        </form>
+    </article>
+</section>

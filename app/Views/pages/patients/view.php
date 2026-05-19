@@ -1,120 +1,128 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold"><i class="fas fa-file-medical-alt"></i> السجل الطبي التاريخي</h2>
+<section class="page-header">
     <div>
-        <button onclick="window.print()" class="btn btn-primary px-4 me-2"><i class="fas fa-print"></i> طباعة السجل</button>
-        <a href="/patients" class="btn btn-outline-secondary px-4">عودة</a>
+        <span class="header-chip"><i class="fas fa-file-medical"></i>السجل الطبي</span>
+        <h1 class="page-title mt-3">السجل الطبي التاريخي</h1>
+        <p class="page-subtitle">ملف زمني واضح يعرض الزيارات السابقة، نتائج الفرز، التشخيص، والعلاج بصورة أكثر ترتيباً.</p>
     </div>
-</div>
+    <div class="page-actions">
+        <button onclick="window.print()" class="btn btn-primary"><i class="fas fa-print ms-2"></i>طباعة السجل</button>
+        <a href="/patients" class="btn btn-outline-secondary"><i class="fas fa-arrow-right ms-2"></i>عودة</a>
+    </div>
+</section>
 
-<!-- Patient Profile Header -->
-<div class="card shadow-sm border-0 rounded-4 mb-5 bg-primary text-white">
-    <div class="card-body p-4 d-flex align-items-center">
-        <div class="display-3 me-4">👤</div>
+<section class="profile-banner">
+    <div class="profile-banner-main">
+        <span class="profile-icon">👤</span>
         <div>
-            <h3 class="fw-bold mb-2"><?php echo htmlspecialchars($patient['full_name']); ?></h3>
-            <div class="d-flex gap-4 opacity-75">
-                <span><strong>الرقم القومي:</strong> <?php echo htmlspecialchars($patient['national_id']); ?></span>
-                <span><strong>رقم الهاتف:</strong> <?php echo htmlspecialchars($patient['phone'] ?: 'غير محدد'); ?></span>
-                <span><strong>تاريخ الميلاد:</strong> <?php echo $patient['dob'] ?: 'غير محدد'; ?></span>
+            <h2 class="profile-name mb-2"><?php echo htmlspecialchars($patient['full_name']); ?></h2>
+            <div class="meta-list">
+                <span><i class="fas fa-id-card"></i> <?php echo htmlspecialchars($patient['national_id']); ?></span>
+                <span><i class="fas fa-phone"></i> <?php echo htmlspecialchars($patient['phone'] ?: 'غير محدد'); ?></span>
+                <span><i class="fas fa-cake-candles"></i> <?php echo htmlspecialchars($patient['dob'] ?: 'غير محدد'); ?></span>
             </div>
         </div>
     </div>
-</div>
+    <span class="badge-soft badge-soft-primary"><i class="fas fa-notes-medical"></i>ملف مريض متكامل</span>
+</section>
 
-<h4 class="fw-bold mb-4 text-dark">تاريخ الزيارات للطوارئ</h4>
-
-<?php if (empty($visits)): ?>
-    <div class="alert alert-light border-0 rounded-4 text-center py-5 shadow-sm">
-        <h5 class="text-muted">لا يوجد أي سجل زيارات سابقة لهذا المريض.</h5>
+<section>
+    <div class="content-card-header mb-3">
+        <div>
+            <h3 class="section-title mb-1">تاريخ زيارات الطوارئ</h3>
+            <p class="section-subtitle">يظهر كل حدث في تسلسل زمني يسهل مراجعته وطباعته.</p>
+        </div>
     </div>
-<?php else: ?>
-    <div class="timeline ps-3 border-start border-3 border-primary ms-3">
-        <?php foreach ($visits as $v): ?>
-            <div class="card shadow-sm border-0 rounded-4 mb-4 position-relative">
-                <!-- Timeline Dot -->
-                <span class="position-absolute translate-middle p-2 bg-primary border border-light rounded-circle" style="top: 25px; left: -18px;"></span>
-                
-                <div class="card-header bg-light border-0 d-flex justify-content-between py-3 rounded-top-4">
-                    <span class="fw-bold text-primary">زيارة رقم #<?php echo $v['id']; ?></span>
-                    <span class="text-muted"><?php echo date('Y-m-d h:i A', strtotime($v['arrival_time'])); ?></span>
-                </div>
-                
-                <div class="card-body p-4">
-                    <div class="row">
-                        <div class="col-md-5 border-end">
-                            <h6 class="fw-bold text-muted mb-3"><span class="badge bg-warning text-dark me-2">فرز طبي</span> العلامات الحيوية المبدئية</h6>
-                            <?php if ($v['blood_pressure']): ?>
-                                <p class="mb-1"><strong>الضغط:</strong> <?php echo htmlspecialchars($v['blood_pressure']); ?></p>
-                                <p class="mb-1"><strong>النبض:</strong> <?php echo htmlspecialchars($v['heart_rate']); ?> bpm</p>
-                                <p class="mb-1"><strong>الحرارة:</strong> <?php echo htmlspecialchars($v['temperature']); ?> °C</p>
-                                <?php if($v['triage_notes']): ?>
-                                    <p class="mb-0 mt-2 text-muted small"><em>ملاحظة تمريض: <?php echo htmlspecialchars($v['triage_notes']); ?></em></p>
-                                <?php endif; ?>
-                            <?php else: ?>
-                                <p class="text-muted small">لم يتم تسجيل تقييم للفرز.</p>
-                            <?php endif; ?>
+
+    <?php if (empty($visits)): ?>
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fas fa-folder-open"></i></div>
+            <h3 class="section-title">لا يوجد سجل زيارات سابق</h3>
+            <p class="empty-copy">لم يتم توثيق أي زيارة طوارئ لهذا المريض حتى الآن.</p>
+        </div>
+    <?php else: ?>
+        <div class="timeline">
+            <?php foreach ($visits as $v): ?>
+                <article class="timeline-card">
+                    <span class="timeline-marker"></span>
+                    <div class="timeline-header mb-3">
+                        <div>
+                            <h4 class="timeline-title mb-1">زيارة رقم #<?php echo $v['id']; ?></h4>
+                            <p class="empty-copy mb-0"><?php echo date('Y-m-d h:i A', strtotime($v['arrival_time'])); ?></p>
                         </div>
-                        <div class="col-md-7 ps-4">
-                            <h6 class="fw-bold text-muted mb-3"><span class="badge bg-primary me-2">فحص طبي</span> التقرير والتشخيص</h6>
-                            <?php if ($v['diagnosis']): ?>
-                                <p class="mb-2"><strong>الطبيب المعالج:</strong> د. <?php echo htmlspecialchars($v['doctor_name']); ?></p>
-                                <div class="bg-light p-3 rounded-3 mb-2">
-                                    <strong class="d-block text-dark mb-1">التشخيص:</strong>
-                                    <?php echo nl2br(htmlspecialchars($v['diagnosis'])); ?>
-                                </div>
-                                <?php if($v['treatment_plan']): ?>
-                                    <div class="bg-light p-3 rounded-3 mb-2">
-                                        <strong class="d-block text-dark mb-1">خطة العلاج:</strong>
-                                        <?php echo nl2br(htmlspecialchars($v['treatment_plan'])); ?>
-                                    </div>
-                                <?php endif; ?>
-                                <?php if($v['prescriptions']): ?>
-                                    <div class="bg-light p-3 rounded-3">
-                                        <strong class="d-block text-dark mb-1">الأدوية الموصوفة:</strong>
-                                        <?php echo nl2br(htmlspecialchars($v['prescriptions'])); ?>
-                                    </div>
-                                <?php endif; ?>
+                        <div>
+                            <?php if($v['status'] == 'discharged'): ?>
+                                <span class="badge-soft badge-soft-success">خروج / شفاء</span>
+                            <?php elseif($v['status'] == 'admitted'): ?>
+                                <span class="badge-soft badge-soft-danger">تنويم / دخول</span>
+                            <?php elseif($v['status'] == 'in_treatment' || $v['status'] == 'waiting'): ?>
+                                <span class="badge-soft badge-soft-primary">تحت الإجراء</span>
                             <?php else: ?>
-                                <div class="alert alert-secondary border-0 py-2">لا يوجد تقرير طبي مسجل. <?php echo $v['status'] == 'in_treatment' || $v['status'] == 'waiting' ? '(المريض لم ينته من العلاج)' : ''; ?></div>
+                                <span class="badge-soft badge-soft-warning">فرز طبي</span>
                             <?php endif; ?>
                         </div>
                     </div>
-                </div>
-                <div class="card-footer bg-white border-0 text-end text-muted small pb-3">
-                    الحالة النهائية للزيارة: <strong>
-                        <?php 
-                            if($v['status'] == 'discharged') echo 'خروج / شفاء';
-                            elseif($v['status'] == 'admitted') echo 'تنويم / دخول المستشفى';
-                            else echo 'تحت الإجراء / غير منتهية';
-                        ?>
-                    </strong>
-                </div>
-            </div>
-        <?php endforeach; ?>
-    </div>
-<?php endif; ?>
 
-<style>
-@media print {
-    .navbar, .btn, .alert, .timeline .position-absolute {
-        display: none !important;
-    }
-    body {
-        background-color: white !important;
-        padding: 0 !important;
-    }
-    .card {
-        border: 1px solid #ddd !important;
-        box-shadow: none !important;
-        page-break-inside: avoid;
-        margin-bottom: 20px !important;
-    }
-    .border-start {
-        border-left: none !important;
-    }
-    .timeline {
-        margin-left: 0 !important;
-        padding-left: 0 !important;
-    }
-}
-</style>
+                    <div class="timeline-body-grid">
+                        <div class="timeline-panel">
+                            <h6><span class="badge-soft badge-soft-warning ms-2">فرز طبي</span>العلامات الحيوية المبدئية</h6>
+                            <?php if ($v['blood_pressure']): ?>
+                                <div class="d-flex flex-column gap-3 mt-3">
+                                    <div class="summary-item">
+                                        <div class="data-label mb-1">ضغط الدم</div>
+                                        <div class="data-value"><?php echo htmlspecialchars($v['blood_pressure']); ?></div>
+                                    </div>
+                                    <div class="summary-item">
+                                        <div class="data-label mb-1">النبض</div>
+                                        <div class="data-value"><?php echo htmlspecialchars($v['heart_rate']); ?> bpm</div>
+                                    </div>
+                                    <div class="summary-item">
+                                        <div class="data-label mb-1">الحرارة</div>
+                                        <div class="data-value"><?php echo htmlspecialchars($v['temperature']); ?> °C</div>
+                                    </div>
+                                    <?php if($v['triage_notes']): ?>
+                                        <div class="summary-item">
+                                            <div class="data-label mb-1">ملاحظة تمريض</div>
+                                            <div class="empty-copy mb-0"><?php echo htmlspecialchars($v['triage_notes']); ?></div>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php else: ?>
+                                <p class="empty-copy mb-0 mt-3">لم يتم تسجيل تقييم للفرز لهذه الزيارة.</p>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="timeline-panel">
+                            <h6><span class="badge-soft badge-soft-primary ms-2">فحص طبي</span>التقرير والتشخيص</h6>
+                            <?php if ($v['diagnosis']): ?>
+                                <div class="d-flex flex-column gap-3 mt-3">
+                                    <div class="summary-item">
+                                        <div class="data-label mb-1">الطبيب المعالج</div>
+                                        <div class="data-value">د. <?php echo htmlspecialchars($v['doctor_name']); ?></div>
+                                    </div>
+                                    <div class="summary-item">
+                                        <div class="data-label mb-1">التشخيص</div>
+                                        <div class="empty-copy mb-0"><?php echo nl2br(htmlspecialchars($v['diagnosis'])); ?></div>
+                                    </div>
+                                    <?php if($v['treatment_plan']): ?>
+                                        <div class="summary-item">
+                                            <div class="data-label mb-1">خطة العلاج</div>
+                                            <div class="empty-copy mb-0"><?php echo nl2br(htmlspecialchars($v['treatment_plan'])); ?></div>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if($v['prescriptions']): ?>
+                                        <div class="summary-item">
+                                            <div class="data-label mb-1">الأدوية الموصوفة</div>
+                                            <div class="empty-copy mb-0"><?php echo nl2br(htmlspecialchars($v['prescriptions'])); ?></div>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="alert alert-warning mt-3 mb-0">لا يوجد تقرير طبي مسجل لهذه الزيارة<?php echo $v['status'] == 'in_treatment' || $v['status'] == 'waiting' ? ' (المريض لم ينته من العلاج بعد)' : ''; ?>.</div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</section>
