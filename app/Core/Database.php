@@ -30,7 +30,7 @@ class Database
             $user = $parts['user'] ?? '';
             $password = isset($parts['pass']) ? urldecode($parts['pass']) : '';
             $dbname = isset($parts['path']) ? ltrim($parts['path'], '/') : '';
-            $sslmode = 'require';
+            $sslmode = 'prefer';
 
             // Honor ?sslmode=... in query string
             if (!empty($parts['query'])) {
@@ -62,56 +62,40 @@ class Database
 
     /**
      * Rewrites MySQL-flavoured SQL into PostgreSQL.
-     * Best-effort translation for the limited set of statements used in this app.
      */
     public static function translateSql(string $sql): string
     {
-        // Strip backticks
         $sql = str_replace('`', '"', $sql);
 
-        // AUTO_INCREMENT INT PRIMARY KEY  ->  SERIAL PRIMARY KEY
         $sql = preg_replace('/INT\s+AUTO_INCREMENT\s+PRIMARY\s+KEY/i', 'SERIAL PRIMARY KEY', $sql);
         $sql = preg_replace('/INT\s+AUTO_INCREMENT/i', 'SERIAL', $sql);
 
-        // ENUM('a','b',...) NOT NULL  ->  VARCHAR(50) NOT NULL  (simple compat)
         $sql = preg_replace_callback(
             '/ENUM\s*\(([^)]+)\)/i',
             function ($m) { return 'VARCHAR(50)'; },
             $sql
         );
 
-        // DATETIME -> TIMESTAMP
         $sql = preg_replace('/\bDATETIME\b/i', 'TIMESTAMP', $sql);
-
-        // TINYINT -> SMALLINT
         $sql = preg_replace('/\bTINYINT(\([^)]*\))?/i', 'SMALLINT', $sql);
 
-        // ENGINE=... CHARSET=... COLLATE=...
         $sql = preg_replace('/\sENGINE\s*=\s*\w+/i', '', $sql);
         $sql = preg_replace('/\sDEFAULT\s+CHARSET\s*=\s*\w+/i', '', $sql);
         $sql = preg_replace('/\sCHARACTER\s+SET\s+\w+/i', '', $sql);
         $sql = preg_replace('/\sCOLLATE\s+\w+/i', '', $sql);
 
-        // INSERT IGNORE -> INSERT ... ON CONFLICT DO NOTHING
         if (preg_match('/^\s*INSERT\s+IGNORE\b/i', $sql)) {
             $sql = preg_replace('/^\s*INSERT\s+IGNORE\b/i', 'INSERT', $sql);
-            // append ON CONFLICT DO NOTHING (before any trailing semicolon)
             $sql = rtrim($sql, "; \t\n\r");
             $sql .= ' ON CONFLICT DO NOTHING';
         }
 
-        // Remove "USE dbname;" — has no meaning in pgsql session
         $sql = preg_replace('/^\s*USE\s+\w+\s*;?\s*/im', '', $sql);
-
-        // CREATE DATABASE IF NOT EXISTS ...  — strip (db is already created on Render)
         $sql = preg_replace('/CREATE\s+DATABASE\s+IF\s+NOT\s+EXISTS[^;]*;?/i', '', $sql);
 
         return $sql;
     }
 
-    /**
-     * Rewrite `?` placeholders to `$1, $2, ...` for PostgreSQL prepared statements.
-     */
     public static function rewritePlaceholders(string $sql): string
     {
         $i = 0;
@@ -124,7 +108,10 @@ class Database
     public function prepare($sql)
     {
         $sql = self::translateSql($sql);
-        $sql = self::rewritePlaceholders($sql);
+        // NOTE: we intentionally do NOT rewrite `?` into `$1, $2, ...`.
+        // PDO understands `?` positional placeholders for pgsql natively
+        // and binds them via bindValue(1-based index). Rewriting them
+        // breaks bindValue when ATTR_EMULATE_PREPARES is false.
         try {
             $stmt = $this->conn->prepare($sql);
             return new Statement($stmt);
@@ -134,10 +121,6 @@ class Database
         }
     }
 
-    /**
-     * Direct query — runs translated SQL. May contain multiple statements
-     * (used by setup_db.php for the schema import).
-     */
     public function query($sql)
     {
         $sql = self::translateSql($sql);
@@ -151,13 +134,9 @@ class Database
         }
     }
 
-    /**
-     * Run multiple statements separated by `;` — for schema import.
-     */
     public function multi_query(string $sql): bool
     {
         $sql = self::translateSql($sql);
-        // Split on semicolons that are not inside quotes (best effort: schema file is simple)
         $statements = preg_split('/;\s*(?=(?:[^\']*\'[^\']*\')*[^\']*$)/', $sql);
         foreach ($statements as $stmt) {
             $stmt = trim($stmt);
@@ -166,7 +145,6 @@ class Database
                 $this->conn->exec($stmt);
             } catch (\PDOException $e) {
                 error_log("[DB multi_query] " . $e->getMessage() . " SQL: " . $stmt);
-                // continue with remaining statements
             }
         }
         return true;
@@ -175,35 +153,37 @@ class Database
 
 /**
  * mysqli_stmt-compatible facade over a PDOStatement.
+ *
+ * NOTE on bind_param: callers use the spread operator (`...$values`) with
+ * a plain array. PHP 8 forbids passing non-references through `...` into
+ * a `&...` variadic parameter, so we keep the signature value-only and
+ * snapshot the typed values into $params. execute() then re-binds with
+ * proper PDO PARAM_* types.
  */
 class Statement
 {
     private \PDOStatement $stmt;
     private array $params = [];
-    private ?Result $lastResult = null;
 
     public function __construct(\PDOStatement $stmt)
     {
         $this->stmt = $stmt;
     }
 
-    /**
-     * bind_param("ssi", $a, $b, $c)
-     * We accept by-value here; legacy code re-binds before each execute().
-     */
-    public function bind_param(string $types, &...$values): bool
+    public function bind_param(string $types, ...$values): bool
     {
         $this->params = [];
-        for ($i = 0; $i < strlen($types); $i++) {
+        $count = strlen($types);
+        for ($i = 0; $i < $count; $i++) {
             $t = $types[$i];
             $v = $values[$i] ?? null;
             switch ($t) {
                 case 'i':
-                    $this->params[] = [$v, \PDO::PARAM_INT];
+                    $this->params[] = [$v === null ? null : (int)$v, \PDO::PARAM_INT];
                     break;
                 case 'd':
                     // PDO has no PARAM_FLOAT — bind as string, pgsql will cast
-                    $this->params[] = [$v, \PDO::PARAM_STR];
+                    $this->params[] = [$v === null ? null : (string)$v, \PDO::PARAM_STR];
                     break;
                 case 'b':
                     $this->params[] = [$v, \PDO::PARAM_LOB];
@@ -220,15 +200,15 @@ class Statement
     public function execute(): bool
     {
         try {
-            // Bind each parameter individually so types are honored
             foreach ($this->params as $i => $pair) {
                 [$value, $type] = $pair;
-                // PDO positional placeholders are 1-based
-                $this->stmt->bindValue($i + 1, $value, $type);
+                if ($value === null) {
+                    $this->stmt->bindValue($i + 1, null, \PDO::PARAM_NULL);
+                } else {
+                    $this->stmt->bindValue($i + 1, $value, $type);
+                }
             }
-            $ok = $this->stmt->execute();
-            $this->lastResult = new Result($this->stmt);
-            return $ok;
+            return $this->stmt->execute();
         } catch (\PDOException $e) {
             error_log("[Statement execute] " . $e->getMessage());
             return false;
@@ -237,32 +217,34 @@ class Statement
 
     public function get_result(): Result
     {
-        return $this->lastResult ?? new Result($this->stmt);
+        return new Result($this->stmt);
     }
 }
 
 /**
  * mysqli_result-compatible facade over a PDOStatement.
+ *
+ * Fetches all rows once on construction so num_rows is accurate (mysqli
+ * semantics) and consecutive fetch_assoc() calls walk the buffered rows.
  */
 class Result
 {
     private \PDOStatement $stmt;
     public int $num_rows = 0;
-    private ?array $rows = null;
+    private array $rows = [];
+    private int $cursor = 0;
 
     public function __construct(\PDOStatement $stmt)
     {
         $this->stmt = $stmt;
-        // For SELECTs, fetchAll once so we can expose num_rows like mysqli does.
         try {
             if ($stmt->columnCount() > 0) {
-                $this->rows = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+                $fetched = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                $this->rows = is_array($fetched) ? $fetched : [];
                 $this->num_rows = count($this->rows);
-            } else {
-                $this->rows = [];
-                $this->num_rows = 0;
             }
         } catch (\PDOException $e) {
+            // Statement may already be closed (e.g. exec'd as DML)
             $this->rows = [];
             $this->num_rows = 0;
         }
@@ -270,12 +252,13 @@ class Result
 
     public function fetch_assoc(): ?array
     {
-        if ($this->rows === null || empty($this->rows)) return null;
-        return array_shift($this->rows);
+        if ($this->cursor >= count($this->rows)) return null;
+        return $this->rows[$this->cursor++];
     }
 
     public function free(): void
     {
-        $this->rows = null;
+        $this->rows = [];
+        $this->cursor = 0;
     }
 }
